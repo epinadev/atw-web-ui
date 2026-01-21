@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/* Configure Tailwind v4 dark mode to use class selector */
+@variant dark (&:where(.dark, .dark *));
+
+/* Light theme (default) */
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+
+  /* Surface colors */
+  --surface: #ffffff;
+  --surface-secondary: #f5f5f4;
+  --surface-tertiary: #e7e5e4;
+
+  /* Border colors */
+  --border: #e7e5e4;
+  --border-secondary: #d6d3d1;
+
+  /* Text colors */
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-tertiary: #78716c;
+  --text-muted: #a8a29e;
+
+  /* Accent colors */
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-bg: #fef3c7;
+
+  /* Status colors */
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #ca8a04;
+  --warning-bg: #fef9c3;
+  --error: #dc2626;
+  --error-bg: #fee2e2;
+  --info: #2563eb;
+  --info-bg: #dbeafe;
+}
+
+/* Dark theme (class-based for manual toggle) */
+:root.dark {
+  --background: #1c1917;
+  --foreground: #fafaf9;
+
+  /* Surface colors */
+  --surface: #292524;
+  --surface-secondary: #1c1917;
+  --surface-tertiary: #44403c;
+
+  /* Border colors */
+  --border: #44403c;
+  --border-secondary: #57534e;
+
+  /* Text colors */
+  --text-primary: #fafaf9;
+  --text-secondary: #d6d3d1;
+  --text-tertiary: #a8a29e;
+  --text-muted: #78716c;
+
+  /* Accent colors */
+  --accent: #fbbf24;
+  --accent-hover: #f59e0b;
+  --accent-bg: #422006;
+
+  /* Status colors */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #422006;
+  --error: #f87171;
+  --error-bg: #450a0a;
+  --info: #60a5fa;
+  --info-bg: #1e3a8a;
+}
+
+/* Dark theme (system preference fallback) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --background: #1c1917;
+    --foreground: #fafaf9;
+
+    /* Surface colors */
+    --surface: #292524;
+    --surface-secondary: #1c1917;
+    --surface-tertiary: #44403c;
+
+    /* Border colors */
+    --border: #44403c;
+    --border-secondary: #57534e;
+
+    /* Text colors */
+    --text-primary: #fafaf9;
+    --text-secondary: #d6d3d1;
+    --text-tertiary: #a8a29e;
+    --text-muted: #78716c;
+
+    /* Accent colors */
+    --accent: #fbbf24;
+    --accent-hover: #f59e0b;
+    --accent-bg: #422006;
+
+    /* Status colors */
+    --success: #4ade80;
+    --success-bg: #14532d;
+    --warning: #facc15;
+    --warning-bg: #422006;
+    --error: #f87171;
+    --error-bg: #450a0a;
+    --info: #60a5fa;
+    --info-bg: #1e3a8a;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/* Custom utility classes using CSS variables */
+@layer utilities {
+  .bg-surface {
+    background-color: var(--surface);
+  }
+  .bg-surface-secondary {
+    background-color: var(--surface-secondary);
+  }
+  .bg-surface-tertiary {
+    background-color: var(--surface-tertiary);
+  }
+  .border-themed {
+    border-color: var(--border);
+  }
+  .border-themed-secondary {
+    border-color: var(--border-secondary);
+  }
+  .text-themed {
+    color: var(--text-primary);
+  }
+  .text-themed-secondary {
+    color: var(--text-secondary);
+  }
+  .text-themed-tertiary {
+    color: var(--text-tertiary);
+  }
+  .text-themed-muted {
+    color: var(--text-muted);
+  }
+  .text-accent {
+    color: var(--accent);
+  }
+  .bg-accent {
+    background-color: var(--accent-bg);
+  }
+}
