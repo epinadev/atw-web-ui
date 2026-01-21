@@ -276,8 +276,36 @@ class ATWClient:
         return self._run("workflow", "executor", "stop-task", task_id)
 
     def executor_stop(self) -> ATWResult:
-        """Stop the workflow executor."""
-        return self._run("workflow", "executor", "stop")
+        """Stop the workflow executor by sending SIGTERM to the process."""
+        import os
+        import signal
+
+        # First get the executor status to find the PID
+        status_result = self.executor_status()
+        if not status_result.success:
+            return ATWResult(success=False, error="Failed to get executor status")
+
+        data = status_result.data
+        if not data:
+            return ATWResult(success=False, error="No executor status data")
+
+        if not data.get("running"):
+            return ATWResult(success=True, raw_output="Executor is not running")
+
+        pid = data.get("pid")
+        if not pid:
+            return ATWResult(success=False, error="Executor running but no PID found")
+
+        try:
+            # Send SIGTERM for graceful shutdown
+            os.kill(pid, signal.SIGTERM)
+            return ATWResult(success=True, raw_output=f"Sent SIGTERM to executor (PID {pid})")
+        except ProcessLookupError:
+            return ATWResult(success=True, raw_output="Executor process not found (already stopped)")
+        except PermissionError:
+            return ATWResult(success=False, error=f"Permission denied to stop executor (PID {pid})")
+        except Exception as e:
+            return ATWResult(success=False, error=f"Failed to stop executor: {str(e)}")
 
     def executor_run_all(self) -> ATWResult:
         """Queue all pending tasks for execution."""
