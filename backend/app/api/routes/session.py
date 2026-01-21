@@ -8,11 +8,17 @@ import select
 import signal
 import struct
 import termios
+import time
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(tags=["session"])
+
+# Configuration for output buffering
+BUFFER_FLUSH_INTERVAL = 0.016  # ~60fps, smooth for TUI rendering
+BUFFER_MAX_SIZE = 16384  # Flush when buffer exceeds this size
+READ_CHUNK_SIZE = 8192  # Larger reads to reduce syscall overhead
 
 
 class TerminalSession:
@@ -64,9 +70,35 @@ class TerminalSession:
         if not self.master_fd or not self.running:
             return None
         try:
-            return os.read(self.master_fd, 4096)
+            return os.read(self.master_fd, READ_CHUNK_SIZE)
         except (OSError, IOError):
             return None
+
+    def read_all_available(self) -> Optional[bytes]:
+        """Read all currently available data from the PTY (drains buffer)."""
+        if not self.master_fd or not self.running:
+            return None
+
+        chunks = []
+        total_size = 0
+
+        while total_size < BUFFER_MAX_SIZE:
+            try:
+                # Check if data is available without blocking
+                readable, _, _ = select.select([self.master_fd], [], [], 0)
+                if not readable:
+                    break
+
+                chunk = os.read(self.master_fd, READ_CHUNK_SIZE)
+                if not chunk:
+                    break
+
+                chunks.append(chunk)
+                total_size += len(chunk)
+            except (OSError, IOError):
+                break
+
+        return b"".join(chunks) if chunks else None
 
     def is_alive(self) -> bool:
         """Check if the process is still running."""
@@ -141,35 +173,67 @@ async def terminal_session(websocket: WebSocket, task_id: str):
         await websocket.send_json({"type": "ready", "task_id": task_id})
 
         async def read_output():
-            """Read output from PTY and send to WebSocket."""
+            """Read output from PTY and send to WebSocket with buffering."""
+            output_buffer = []
+            last_flush_time = time.monotonic()
+
             while session.running:
-                if session.master_fd:
-                    # Use select to check if data is available
-                    try:
-                        readable, _, _ = select.select([session.master_fd], [], [], 0.05)
-                        if readable:
-                            data = session.read()
-                            if data:
-                                await websocket.send_json({
-                                    "type": "output",
-                                    "data": data.decode("utf-8", errors="replace"),
-                                })
-                    except (ValueError, OSError):
-                        break
+                if not session.master_fd:
+                    break
+
+                try:
+                    # Wait for data with a short timeout
+                    readable, _, _ = select.select([session.master_fd], [], [], BUFFER_FLUSH_INTERVAL)
+
+                    if readable:
+                        # Read all available data at once
+                        data = session.read_all_available()
+                        if data:
+                            output_buffer.append(data)
+
+                    current_time = time.monotonic()
+                    buffer_size = sum(len(chunk) for chunk in output_buffer)
+                    time_since_flush = current_time - last_flush_time
+
+                    # Flush buffer if:
+                    # 1. Buffer has data AND enough time has passed, OR
+                    # 2. Buffer exceeds max size
+                    should_flush = output_buffer and (
+                        time_since_flush >= BUFFER_FLUSH_INTERVAL or
+                        buffer_size >= BUFFER_MAX_SIZE
+                    )
+
+                    if should_flush:
+                        combined_data = b"".join(output_buffer)
+                        output_buffer.clear()
+                        last_flush_time = current_time
+
+                        await websocket.send_json({
+                            "type": "output",
+                            "data": combined_data.decode("utf-8", errors="replace"),
+                        })
+
+                except (ValueError, OSError):
+                    break
 
                 # Check if process is still alive
                 if not session.is_alive():
+                    # Flush any remaining buffered output
+                    if output_buffer:
+                        combined_data = b"".join(output_buffer)
+                        await websocket.send_json({
+                            "type": "output",
+                            "data": combined_data.decode("utf-8", errors="replace"),
+                        })
                     await websocket.send_json({"type": "exit", "code": 0})
                     break
-
-                await asyncio.sleep(0.01)
 
         async def handle_input():
             """Handle input from WebSocket."""
             while session.running:
                 try:
                     message = await asyncio.wait_for(
-                        websocket.receive_json(), timeout=0.5
+                        websocket.receive_json(), timeout=0.1
                     )
                     msg_type = message.get("type")
 

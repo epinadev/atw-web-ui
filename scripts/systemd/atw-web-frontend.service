@@ -1,0 +1,22 @@
+[Unit]
+Description=ATW Web UI - Frontend (Next.js)
+After=network.target atw-web-backend.service
+Wants=atw-web-backend.service
+
+[Service]
+Type=simple
+User=%USER%
+Group=%USER%
+WorkingDirectory=%PROJECT_ROOT%/frontend
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=append:%PROJECT_ROOT%/logs/frontend.log
+StandardError=append:%PROJECT_ROOT%/logs/frontend.log
+
+[Install]
+WantedBy=multi-user.target

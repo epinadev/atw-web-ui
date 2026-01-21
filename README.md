@@ -25,41 +25,98 @@ Web application for Atlas Task Workflow - a mobile-responsive interface for mana
 
 ## Quick Start
 
-### 1. Setup
+### Option 1: Full Installation (Recommended)
 
 ```bash
 cd ~/Proyectos/atw-web-ui
-./scripts/setup.sh
+./scripts/install.sh
 ```
 
-### 2. Start Development Servers
+This will:
+- Install system dependencies (Ubuntu only)
+- Set up Python venv and install backend dependencies
+- Install npm packages and build the frontend
+
+### Option 2: Development Mode
 
 ```bash
 ./scripts/dev.sh
 ```
 
-This starts:
+Starts both servers with hot-reload for development.
+
+### Option 3: Production Mode
+
+```bash
+./scripts/start.sh       # Start in background
+./scripts/start.sh -f    # Start in foreground
+./scripts/stop.sh        # Stop all services
+```
+
+Services:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
-### Manual Setup
+## Deployment on Ubuntu Server
 
-#### Backend
+### 1. Clone and Install
+
+```bash
+git clone <repo-url> ~/atw-web-ui
+cd ~/atw-web-ui
+./scripts/install.sh
+```
+
+### 2. Install as System Service (auto-start on boot)
+
+```bash
+sudo ./scripts/install-service.sh
+```
+
+### 3. Manage Services
+
+```bash
+# Start
+sudo systemctl start atw-web-backend atw-web-frontend
+
+# Stop
+sudo systemctl stop atw-web-frontend atw-web-backend
+
+# Status
+sudo systemctl status atw-web-backend atw-web-frontend
+
+# Logs
+journalctl -u atw-web-backend -f
+tail -f ~/atw-web-ui/logs/backend.log
+```
+
+### 4. Uninstall Services
+
+```bash
+sudo ./scripts/uninstall-service.sh
+```
+
+## Manual Setup
+
+### Backend
 
 ```bash
 cd backend
-uv sync  # or: pip install -e ".[dev]"
-uv run uvicorn app.main:app --reload --port 8000
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi "uvicorn[standard]" pydantic pydantic-settings
+uvicorn app.main:app --reload --port 8000
 ```
 
-#### Frontend
+### Frontend
 
 ```bash
 cd frontend
 npm install
-npm install @tanstack/react-query zustand axios clsx tailwind-merge lucide-react
-npm run dev
+npm run dev      # Development
+npm run build    # Build for production
+npm start        # Production server
 ```
 
 ## Project Structure
@@ -83,7 +140,14 @@ atw-web-ui/
 │   │   └── main.py
 │   └── pyproject.toml
 │
-└── scripts/                    # Development scripts
+└── scripts/                    # Deployment scripts
+    ├── install.sh              # Full installation
+    ├── dev.sh                  # Development mode
+    ├── start.sh                # Production start
+    ├── stop.sh                 # Stop services
+    ├── install-service.sh      # Install systemd services
+    ├── uninstall-service.sh    # Remove systemd services
+    └── systemd/                # Service file templates
 ```
 
 ## API Endpoints

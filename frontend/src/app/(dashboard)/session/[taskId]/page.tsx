@@ -20,33 +20,35 @@ interface PageProps {
 export default function SessionPage({ params }: PageProps) {
   const { taskId } = use(params);
   const { data: task, isLoading: taskLoading } = useTaskDetail(taskId);
-  const { terminalRef, write, focus } = useTerminalWriter();
+  const { terminalRef, write, writeImmediate, focus } = useTerminalWriter();
   const connectedRef = useRef(false);
 
   const handleOutput = useCallback(
     (data: string) => {
+      // Use buffered write for PTY output (already batched by backend)
       write(data);
     },
     [write]
   );
 
   const handleReady = useCallback(() => {
-    write("\r\n\x1b[32mSession started. Interact with Claude below.\x1b[0m\r\n\r\n");
+    // Use immediate write for status messages
+    writeImmediate("\r\n\x1b[32mSession started. Interact with Claude below.\x1b[0m\r\n\r\n");
     focus();
-  }, [write, focus]);
+  }, [writeImmediate, focus]);
 
   const handleExit = useCallback(
     (code: number) => {
-      write(`\r\n\x1b[33mSession ended with code ${code}\x1b[0m\r\n`);
+      writeImmediate(`\r\n\x1b[33mSession ended with code ${code}\x1b[0m\r\n`);
     },
-    [write]
+    [writeImmediate]
   );
 
   const handleError = useCallback(
     (message: string) => {
-      write(`\r\n\x1b[31mError: ${message}\x1b[0m\r\n`);
+      writeImmediate(`\r\n\x1b[31mError: ${message}\x1b[0m\r\n`);
     },
-    [write]
+    [writeImmediate]
   );
 
   const { status, connect, disconnect, sendInput, sendResize, stop } =
