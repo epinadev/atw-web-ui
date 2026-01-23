@@ -1,10 +1,12 @@
 /**
  * Dropdown menu component.
+ * Uses Portal to render menu outside of overflow containers.
  */
 
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface DropdownMenuProps {
@@ -15,32 +17,89 @@ interface DropdownMenuProps {
 
 export function DropdownMenu({ trigger, children, align = "right" }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [coords, setCoords] = React.useState({ top: 0, left: 0, right: 0 });
+  const triggerRef = React.useRef<HTMLDivElement>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
+  // Only render portal after mount (client-side only)
   React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    setMounted(true);
   }, []);
 
+  // Calculate position when opening
+  const handleOpen = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 4,
+        left: rect.left,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(true);
+  };
+
+  // Close menu
+  const handleClose = () => setOpen(false);
+
+  // Handle click outside
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
+      ) {
+        handleClose();
+      }
+    };
+
+    // Delay to prevent immediate close from the opening click
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  // Close on escape
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open]);
+
+  const menuContent = (
+    <div
+      ref={menuRef}
+      className="fixed z-[9999] min-w-[180px] max-h-[80vh] overflow-y-auto rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-1 shadow-lg"
+      style={{
+        top: coords.top,
+        ...(align === "right" ? { right: coords.right } : { left: coords.left }),
+      }}
+      onClick={handleClose}
+    >
+      {children}
+    </div>
+  );
+
   return (
-    <div className="relative" ref={menuRef}>
-      <div onClick={() => setOpen(!open)}>{trigger}</div>
-      {open && (
-        <div
-          className={cn(
-            "absolute z-50 mt-1 min-w-[180px] rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-1 shadow-lg",
-            align === "right" ? "right-0" : "left-0"
-          )}
-          onClick={() => setOpen(false)}
-        >
-          {children}
-        </div>
-      )}
+    <div className="relative" ref={triggerRef}>
+      <div onClick={open ? handleClose : handleOpen}>{trigger}</div>
+      {mounted && open && createPortal(menuContent, document.body)}
     </div>
   );
 }

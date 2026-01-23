@@ -116,7 +116,7 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
             state={state as WorkflowState}
             tasks={columns[state as WorkflowState] || []}
             onSelectTask={onSelectTask}
-            defaultExpanded={index === 0}
+            defaultExpanded
           />
         ))}
       </div>

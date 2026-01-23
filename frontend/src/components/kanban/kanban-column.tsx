@@ -1,14 +1,31 @@
 /**
  * Kanban column component.
+ * Queue column supports drag-and-drop for priority reordering.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Eye, Trash2, ChevronRight } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
 import { WORKFLOW_STATE_CONFIG } from "@/lib/constants";
+import { useSetTaskPriority } from "@/hooks";
 import { KanbanCard } from "./kanban-card";
+import { SortableKanbanCard } from "./sortable-kanban-card";
 import type { Task, WorkflowState } from "@/types";
 
 interface KanbanColumnProps {
@@ -26,6 +43,63 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const config = WORKFLOW_STATE_CONFIG[state];
+  const setTaskPriority = useSetTaskPriority();
+
+  const isQueueColumn = state === "queued";
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Task IDs for sortable context
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+
+  // Handle drag end - update priority based on new position
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tasks.findIndex((t) => t.id === active.id);
+    const newIndex = tasks.findIndex((t) => t.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Calculate new priority based on position
+    let newPriority: number;
+
+    if (newIndex === 0) {
+      // Moving to first - priority lower than current first
+      const firstPriority = tasks[0]?.priority ?? 100;
+      newPriority = Math.max(1, firstPriority - 10);
+    } else if (newIndex >= tasks.length - 1) {
+      // Moving to last - priority higher than current last
+      const lastPriority = tasks[tasks.length - 1]?.priority ?? 100;
+      newPriority = lastPriority + 10;
+    } else {
+      // Moving between two tasks - average their priorities
+      const targetIndex = oldIndex < newIndex ? newIndex : newIndex - 1;
+      const prevPriority = tasks[targetIndex]?.priority ?? 100;
+      const nextPriority = tasks[targetIndex + 1]?.priority ?? prevPriority + 20;
+      newPriority = Math.round((prevPriority + nextPriority) / 2);
+    }
+
+    // Clamp to valid range
+    newPriority = Math.max(1, Math.min(200, newPriority));
+
+    setTaskPriority.mutate({
+      taskId: active.id as string,
+      priority: newPriority,
+    });
+  };
 
   // Empty state messages
   const emptyMessages: Record<WorkflowState, { icon: React.ReactNode; text: string }> = {
@@ -45,6 +119,41 @@ export function KanbanColumn({
       icon: <Eye className="h-6 w-6 text-stone-300 dark:text-stone-600" />,
       text: "No tasks in review",
     },
+  };
+
+  // Render task cards - with or without drag-and-drop
+  const renderTasks = () => {
+    if (tasks.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-32 text-stone-400 dark:text-stone-500">
+          {emptyMessages[state].icon}
+          <p className="mt-2 text-sm">{emptyMessages[state].text}</p>
+          {state === "review" && (
+            <p className="text-xs mt-1">AI will review completed tasks</p>
+          )}
+        </div>
+      );
+    }
+
+    if (isQueueColumn) {
+      return (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+            {tasks.map((task) => (
+              <SortableKanbanCard key={task.id} task={task} onSelect={onSelectTask} />
+            ))}
+          </SortableContext>
+        </DndContext>
+      );
+    }
+
+    return tasks.map((task) => (
+      <KanbanCard key={task.id} task={task} onSelect={onSelectTask} />
+    ));
   };
 
   return (
@@ -106,23 +215,7 @@ export function KanbanColumn({
               "bg-stone-50/50 dark:bg-stone-800/50"
             )}
           >
-            {tasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-stone-400 dark:text-stone-500">
-                {emptyMessages[state].icon}
-                <p className="mt-2 text-sm">{emptyMessages[state].text}</p>
-                {state === "review" && (
-                  <p className="text-xs mt-1">AI will review completed tasks</p>
-                )}
-              </div>
-            ) : (
-              tasks.map((task) => (
-                <KanbanCard
-                  key={task.id}
-                  task={task}
-                  onSelect={onSelectTask}
-                />
-              ))
-            )}
+            {renderTasks()}
           </div>
         </div>
       </div>
