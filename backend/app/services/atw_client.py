@@ -5,11 +5,25 @@ Ported from atw-ui TUI for web API usage.
 """
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from app.config import settings
+
+
+def _get_subprocess_env() -> dict:
+    """Get environment for subprocess calls with proper PATH."""
+    env = os.environ.copy()
+    # Ensure user's local bin is in PATH (for atw command)
+    home = Path.home()
+    local_bin = str(home / ".local" / "bin")
+    current_path = env.get("PATH", "")
+    if local_bin not in current_path:
+        env["PATH"] = f"{local_bin}:{current_path}"
+    return env
 
 
 # Status display configuration
@@ -61,6 +75,7 @@ class ATWClient:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                env=_get_subprocess_env(),
             )
 
             output = result.stdout.strip()
@@ -266,6 +281,7 @@ class ATWClient:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
+                env=_get_subprocess_env(),
             )
             return ATWResult(success=True, raw_output="Executor started in background")
         except Exception as e:

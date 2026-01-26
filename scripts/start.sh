@@ -14,6 +14,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PID_DIR="$PROJECT_ROOT/.pids"
 LOG_DIR="$PROJECT_ROOT/logs"
 
+# Ensure ~/.local/bin is in PATH for atw command
+export PATH="$HOME/.local/bin:$PATH"
+
 # Create directories
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
@@ -72,11 +75,11 @@ source .venv/bin/activate
 
 if [ "$FOREGROUND" = true ]; then
     trap cleanup SIGINT SIGTERM
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+    uvicorn app.main:app --host 0.0.0.0 --port 8001 &
     BACKEND_PID=$!
     echo $BACKEND_PID > "$PID_DIR/backend.pid"
 else
-    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8001 \
         > "$LOG_DIR/backend.log" 2>&1 &
     BACKEND_PID=$!
     echo $BACKEND_PID > "$PID_DIR/backend.pid"
@@ -107,8 +110,8 @@ echo ""
 echo -e "${GREEN}Services are running!${NC}"
 echo ""
 echo "  Frontend: ${YELLOW}http://localhost:3000${NC}"
-echo "  Backend:  ${YELLOW}http://localhost:8000${NC}"
-echo "  API Docs: ${YELLOW}http://localhost:8000/docs${NC}"
+echo "  Backend:  ${YELLOW}http://localhost:8001${NC}"
+echo "  API Docs: ${YELLOW}http://localhost:8001/docs${NC}"
 echo ""
 
 if [ "$FOREGROUND" = true ]; then
