@@ -169,9 +169,9 @@ class ATWClient:
         """Set task to CONCLUDE."""
         return self._run("tasks", "finish", task_id)
 
-    def task_unblock(self, task_id: str) -> ATWResult:
-        """Unblock a task and set to READY."""
-        return self._run("workflow", "unblock", task_id)
+    def workflow_approve(self, task_id: str) -> ATWResult:
+        """Approve workflow and move to next stage."""
+        return self._run("workflow", "approve", task_id)
 
     def task_done(self, task_id: str) -> ATWResult:
         """Mark task as DONE."""

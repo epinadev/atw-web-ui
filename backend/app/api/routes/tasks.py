@@ -131,15 +131,15 @@ async def finish_task(task_id: str):
     return {"success": True, "message": f"Task {task_id} set to CONCLUDE"}
 
 
-@router.post("/{task_id}/unblock")
-async def unblock_task(task_id: str):
-    """Unblock task and set to READY."""
-    result = atw_client.task_unblock(task_id)
+@router.post("/{task_id}/workflow-approve")
+async def workflow_approve(task_id: str):
+    """Approve workflow and move task to next stage."""
+    result = atw_client.workflow_approve(task_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
-    return {"success": True, "message": f"Task {task_id} unblocked"}
+    return {"success": True, "message": f"Task {task_id} workflow approved"}
 
 
 @router.post("/{task_id}/done")
