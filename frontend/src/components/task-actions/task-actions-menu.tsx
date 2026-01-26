@@ -16,7 +16,6 @@ import {
   Square,
   ArrowUpCircle,
   CheckCircle2,
-  Unlock,
   Sparkles,
   Gauge,
   Tag,
@@ -43,8 +42,7 @@ import { TimesheetModal } from "./timesheet-modal";
 import {
   useApproveTask,
   useResetTask,
-  useFinishTask,
-  useUnblockTask,
+  useWorkflowApprove,
   useMarkTaskDone,
   useSetTaskPriority,
   useSetTaskType,
@@ -70,8 +68,7 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   // Mutations
   const approveTask = useApproveTask();
   const resetTask = useResetTask();
-  const finishTask = useFinishTask();
-  const unblockTask = useUnblockTask();
+  const workflowApprove = useWorkflowApprove();
   const markDone = useMarkTaskDone();
   const setPriority = useSetTaskPriority();
   const setType = useSetTaskType();
@@ -86,8 +83,7 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   const isPending =
     approveTask.isPending ||
     resetTask.isPending ||
-    finishTask.isPending ||
-    unblockTask.isPending ||
+    workflowApprove.isPending ||
     markDone.isPending ||
     setPriority.isPending ||
     setType.isPending ||
@@ -101,8 +97,7 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
 
   // Action availability based on status
   const canApprove = task.status === "approve" || task.status === "blocked";
-  const canUnblock = task.status === "blocked";
-  const canFinish = task.status === "review";
+  const canWorkflowApprove = task.status === "review";
   const canStop = task.status === "running";
   const canRunWorkflow = task.status !== "running" && task.status !== "done";
 
@@ -118,12 +113,8 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
     resetTask.mutate(taskId, { onSuccess });
   };
 
-  const handleFinish = () => {
-    finishTask.mutate(taskId, { onSuccess });
-  };
-
-  const handleUnblock = () => {
-    unblockTask.mutate(taskId, { onSuccess });
+  const handleWorkflowApprove = () => {
+    workflowApprove.mutate(taskId, { onSuccess });
   };
 
   const handleDone = () => {
@@ -201,21 +192,12 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
           </DropdownMenuItem>
         )}
 
-        {canUnblock && (
+        {canWorkflowApprove && (
           <DropdownMenuItem
-            onClick={handleUnblock}
-            icon={<Unlock className="h-4 w-4" />}
-          >
-            Unblock
-          </DropdownMenuItem>
-        )}
-
-        {canFinish && (
-          <DropdownMenuItem
-            onClick={handleFinish}
+            onClick={handleWorkflowApprove}
             icon={<Flag className="h-4 w-4" />}
           >
-            Finish (to Conclude)
+            Approve (Conclude)
           </DropdownMenuItem>
         )}
 

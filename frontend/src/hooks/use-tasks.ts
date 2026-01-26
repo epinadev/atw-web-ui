@@ -66,20 +66,10 @@ export function useResetTask() {
   });
 }
 
-export function useFinishTask() {
+export function useWorkflowApprove() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (taskId: string) => tasksApi.finish(taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
-}
-
-export function useUnblockTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (taskId: string) => tasksApi.unblock(taskId),
+    mutationFn: (taskId: string) => tasksApi.workflowApprove(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },

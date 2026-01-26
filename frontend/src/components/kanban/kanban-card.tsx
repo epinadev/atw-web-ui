@@ -5,11 +5,14 @@
 
 "use client";
 
+import { Check } from "lucide-react";
 import { cn, truncate } from "@/lib/utils";
 import { STATUS_CONFIG, TYPE_CONFIG, getPriorityConfig } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { TaskActionsMenu } from "@/components/task-actions";
+import { useApproveTask } from "@/hooks";
 import type { Task } from "@/types";
 
 interface KanbanCardProps {
@@ -23,6 +26,15 @@ export function KanbanCard({ task, onSelect }: KanbanCardProps) {
   const priorityConfig = getPriorityConfig(task.priority);
   const progress = task.workflow_progress?.progress_percent ?? 0;
   const hasProgress = task.status === "running" || progress > 0;
+
+  const approveTask = useApproveTask();
+  const needsApproval = task.status === "approve";
+  const taskId = task.source_id || String(task.id);
+
+  const handleApprove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    approveTask.mutate(taskId);
+  };
 
   return (
     <div
@@ -69,6 +81,21 @@ export function KanbanCard({ task, onSelect }: KanbanCardProps) {
           </span>
         )}
       </div>
+
+      {/* Approve Button - prominent for tasks needing approval */}
+      {needsApproval && (
+        <div className="mb-3">
+          <Button
+            size="sm"
+            onClick={handleApprove}
+            disabled={approveTask.isPending}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Check className="h-4 w-4 mr-2" />
+            {approveTask.isPending ? "Approving..." : "Approve"}
+          </Button>
+        </div>
+      )}
 
       {/* Progress Bar (for running tasks) */}
       {hasProgress && (

@@ -11,7 +11,6 @@ import {
   Play,
   Square,
   CheckCircle2,
-  Unlock,
   Sparkles,
   Gauge,
   Tag,
@@ -121,16 +120,9 @@ export default function HelpPage() {
                   available="status = approve | blocked"
                 />
                 <CommandRow
-                  icon={<Unlock className="h-4 w-4" />}
-                  action="Unblock"
-                  command="atw workflow unblock {task_id}"
-                  description="Removes blockers and sets task to READY."
-                  available="status = blocked"
-                />
-                <CommandRow
                   icon={<Flag className="h-4 w-4" />}
-                  action="Finish (to Conclude)"
-                  command="atw tasks finish {task_id}"
+                  action="Approve (Conclude)"
+                  command="atw workflow approve {task_id}"
                   description="Sets task to CONCLUDE. Executor will run cleanup workflow."
                   available="status = review"
                 />
@@ -441,7 +433,7 @@ export default function HelpPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <StatusBadge status="review" icon="R" color="amber" />
                 <ArrowRight className="h-4 w-4 text-stone-400" />
-                <span className="text-xs">(Finish)</span>
+                <span className="text-xs">(Approve)</span>
                 <ArrowRight className="h-4 w-4 text-stone-400" />
                 <StatusBadge status="conclude" icon="C" color="teal" />
                 <ArrowRight className="h-4 w-4 text-stone-400" />

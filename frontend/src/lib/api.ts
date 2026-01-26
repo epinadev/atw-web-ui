@@ -124,11 +124,8 @@ export const tasksApi = {
   reset: (taskId: string): Promise<any> =>
     request(`/api/tasks/${taskId}/reset`, { method: "POST" }),
 
-  finish: (taskId: string): Promise<any> =>
-    request(`/api/tasks/${taskId}/finish`, { method: "POST" }),
-
-  unblock: (taskId: string): Promise<any> =>
-    request(`/api/tasks/${taskId}/unblock`, { method: "POST" }),
+  workflowApprove: (taskId: string): Promise<any> =>
+    request(`/api/tasks/${taskId}/workflow-approve`, { method: "POST" }),
 
   done: (taskId: string): Promise<any> =>
     request(`/api/tasks/${taskId}/done`, { method: "POST" }),
