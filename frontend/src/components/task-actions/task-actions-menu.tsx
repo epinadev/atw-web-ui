@@ -11,18 +11,13 @@ import {
   MoreVertical,
   Check,
   RotateCcw,
-  Flag,
   Play,
   Square,
-  ArrowUpCircle,
   CheckCircle2,
   Sparkles,
   Gauge,
   Tag,
   ExternalLink,
-  FolderOpen,
-  FileText,
-  AlertCircle,
   Trash2,
   Wrench,
   Clock,
@@ -42,7 +37,6 @@ import { TimesheetModal } from "./timesheet-modal";
 import {
   useApproveTask,
   useResetTask,
-  useWorkflowApprove,
   useMarkTaskDone,
   useSetTaskPriority,
   useSetTaskType,
@@ -68,7 +62,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   // Mutations
   const approveTask = useApproveTask();
   const resetTask = useResetTask();
-  const workflowApprove = useWorkflowApprove();
   const markDone = useMarkTaskDone();
   const setPriority = useSetTaskPriority();
   const setType = useSetTaskType();
@@ -83,7 +76,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   const isPending =
     approveTask.isPending ||
     resetTask.isPending ||
-    workflowApprove.isPending ||
     markDone.isPending ||
     setPriority.isPending ||
     setType.isPending ||
@@ -96,8 +88,8 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
     createTimesheet.isPending;
 
   // Action availability based on status
-  const canApprove = task.status === "approve" || task.status === "blocked";
-  const canWorkflowApprove = task.status === "review";
+  // 'atw tasks approve' handles all human review states: approve, blocked, review -> conclude
+  const canApprove = task.status === "approve" || task.status === "blocked" || task.status === "review";
   const canStop = task.status === "running";
   const canRunWorkflow = task.status !== "running" && task.status !== "done";
 
@@ -111,10 +103,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
 
   const handleReset = () => {
     resetTask.mutate(taskId, { onSuccess });
-  };
-
-  const handleWorkflowApprove = () => {
-    workflowApprove.mutate(taskId, { onSuccess });
   };
 
   const handleDone = () => {
@@ -189,15 +177,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
             icon={<Check className="h-4 w-4" />}
           >
             Approve
-          </DropdownMenuItem>
-        )}
-
-        {canWorkflowApprove && (
-          <DropdownMenuItem
-            onClick={handleWorkflowApprove}
-            icon={<Flag className="h-4 w-4" />}
-          >
-            Approve (Conclude)
           </DropdownMenuItem>
         )}
 
