@@ -1,5 +1,6 @@
 """Task management endpoints."""
 
+import asyncio
 import os
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
@@ -178,7 +179,8 @@ async def set_type(task_id: str, body: TypeUpdate):
 @router.post("/{task_id}/categorize")
 async def categorize_task(task_id: str):
     """Run AI categorization on task."""
-    result = atw_client.task_categorize(task_id)
+    # Run in thread pool to avoid blocking the event loop (can take up to 60s)
+    result = await asyncio.to_thread(atw_client.task_categorize, task_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)

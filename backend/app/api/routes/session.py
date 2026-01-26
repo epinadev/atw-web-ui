@@ -36,8 +36,18 @@ class TerminalSession:
         pid, master_fd = pty.fork()
 
         if pid == 0:
-            # Child process - execute claude command
+            # Child process - set up environment and execute claude command
             os.environ["TERM"] = "xterm-256color"
+            # Ensure PATH includes common locations for claude and atw
+            home = os.path.expanduser("~")
+            extra_paths = [
+                f"{home}/.npm-global/bin",
+                f"{home}/.local/bin",
+                "/usr/local/bin",
+            ]
+            current_path = os.environ.get("PATH", "")
+            os.environ["PATH"] = ":".join(extra_paths) + ":" + current_path
+
             os.execlp(
                 "claude",
                 "claude",

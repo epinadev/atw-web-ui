@@ -1,5 +1,6 @@
 """Workflow and executor endpoints."""
 
+import asyncio
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 from pydantic import BaseModel
@@ -128,7 +129,8 @@ async def workflow_fail(task_id: str, body: FailReason = FailReason()):
 @router.post("/workflow/fix/{task_id}")
 async def workflow_fix(task_id: str):
     """AI-powered diagnosis and fix for stuck or broken tasks."""
-    result = atw_client.workflow_fix(task_id)
+    # Run in thread pool to avoid blocking the event loop (can take up to 120s)
+    result = await asyncio.to_thread(atw_client.workflow_fix, task_id)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
@@ -139,7 +141,10 @@ async def workflow_fix(task_id: str):
 @router.post("/workflow/timesheet/{task_id}")
 async def workflow_timesheet(task_id: str, body: TimesheetRequest):
     """Generate timesheets from work done on a task."""
-    result = atw_client.workflow_timesheet(task_id, prompt=body.prompt, dry_run=body.dry_run)
+    # Run in thread pool to avoid blocking the event loop (can take up to 120s)
+    result = await asyncio.to_thread(
+        atw_client.workflow_timesheet, task_id, body.prompt, body.dry_run
+    )
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
@@ -202,7 +207,8 @@ async def stop_executor():
 @router.post("/executor/run-all")
 async def run_all_tasks():
     """Queue all pending tasks for execution."""
-    result = atw_client.executor_run_all()
+    # Run in thread pool to avoid blocking the event loop (can take up to 60s)
+    result = await asyncio.to_thread(atw_client.executor_run_all)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)

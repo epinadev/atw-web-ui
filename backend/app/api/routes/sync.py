@@ -1,5 +1,6 @@
 """Sync endpoints."""
 
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -17,10 +18,12 @@ class SyncOptions(BaseModel):
 @router.post("/data")
 async def sync_data(options: SyncOptions = SyncOptions()):
     """Sync data folder."""
-    result = atw_client.sync_data(
-        dry_run=options.dry_run,
-        to_remote=options.to_remote,
-        from_remote=options.from_remote,
+    # Run in thread pool to avoid blocking the event loop (can take up to 120s)
+    result = await asyncio.to_thread(
+        atw_client.sync_data,
+        options.dry_run,
+        options.to_remote,
+        options.from_remote,
     )
 
     if not result.success:
@@ -32,7 +35,8 @@ async def sync_data(options: SyncOptions = SyncOptions()):
 @router.post("/tasks")
 async def sync_tasks():
     """Sync tasks from Odoo."""
-    result = atw_client.sync_tasks()
+    # Run in thread pool to avoid blocking the event loop (can take up to 120s)
+    result = await asyncio.to_thread(atw_client.sync_tasks)
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
