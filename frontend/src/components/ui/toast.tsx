@@ -44,6 +44,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 4000);
+    } else {
+      // Failsafe: auto-dismiss loading toasts after 3 minutes with timeout message
+      setTimeout(() => {
+        setToasts((prev) => {
+          const toast = prev.find((t) => t.id === id);
+          if (toast && toast.type === "loading") {
+            // Update to error and then dismiss
+            return prev.map((t) =>
+              t.id === id ? { ...t, message: "Operation timed out", type: "error" as ToastType } : t
+            );
+          }
+          return prev;
+        });
+        // Then dismiss after showing the error
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, 4000);
+      }, 180000); // 3 minutes
     }
 
     return id;

@@ -191,12 +191,13 @@ export const workflowApi = {
     }),
 
   fix: (taskId: string): Promise<any> =>
-    request(`/api/workflow/fix/${taskId}`, { method: "POST" }),
+    request(`/api/workflow/fix/${taskId}`, { method: "POST", timeout: 180000 }), // 3 min
 
   timesheet: (taskId: string, prompt: string, dryRun: boolean = false): Promise<any> =>
     request(`/api/workflow/timesheet/${taskId}`, {
       method: "POST",
       body: JSON.stringify({ prompt, dry_run: dryRun }),
+      timeout: 180000, // 3 min
     }),
 };
 

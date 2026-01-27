@@ -122,8 +122,9 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
         updateToast(toastId, "Task categorized", "success");
         onSuccess?.();
       },
-      onError: (error) => {
-        updateToast(toastId, `Failed: ${error.message}`, "error");
+      onError: (error: any) => {
+        const msg = error?.message || error?.data?.detail || "Unknown error";
+        updateToast(toastId, `Failed: ${msg}`, "error");
       },
     });
   };
@@ -135,8 +136,9 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
         updateToast(toastId, "Workflow fixed", "success");
         onSuccess?.();
       },
-      onError: (error) => {
-        updateToast(toastId, `Fix failed: ${error.message}`, "error");
+      onError: (error: any) => {
+        const msg = error?.message || error?.data?.detail || "Unknown error";
+        updateToast(toastId, `Fix failed: ${msg}`, "error");
       },
     });
   };
@@ -151,8 +153,9 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
           updateToast(toastId, "Timesheet created", "success");
           onSuccess?.();
         },
-        onError: (error) => {
-          updateToast(toastId, `Failed: ${error.message}`, "error");
+        onError: (error: any) => {
+          const msg = error?.message || error?.data?.detail || "Unknown error";
+          updateToast(toastId, `Failed: ${msg}`, "error");
         },
       }
     );
@@ -185,8 +188,9 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
           );
           onSuccess?.();
         },
-        onError: (error) => {
-          updateToast(toastId, `Failed: ${error.message}`, "error");
+        onError: (error: any) => {
+          const msg = error?.message || error?.data?.detail || "Unknown error";
+          updateToast(toastId, `Failed: ${msg}`, "error");
         },
       }
     );

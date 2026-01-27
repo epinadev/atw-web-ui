@@ -41,8 +41,9 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
           updateToast(toastId, restart ? "Workflow restarted" : "Workflow queued", "success");
           refetch();
         },
-        onError: (error) => {
-          updateToast(toastId, `Failed: ${error.message}`, "error");
+        onError: (error: any) => {
+          const msg = error?.message || error?.data?.detail || "Unknown error";
+          updateToast(toastId, `Failed: ${msg}`, "error");
         },
       }
     );
