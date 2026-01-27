@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/toast";
 import { PriorityModal } from "./priority-modal";
 import { TypeModal } from "./type-modal";
 import { WorkflowModal } from "./workflow-modal";
@@ -53,6 +54,7 @@ interface TaskActionsMenuProps {
 
 export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   const router = useRouter();
+  const { showToast, updateToast } = useToast();
   const [priorityModalOpen, setPriorityModalOpen] = useState(false);
   const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [workflowModalOpen, setWorkflowModalOpen] = useState(false);
@@ -114,34 +116,80 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
   };
 
   const handleCategorize = () => {
-    categorize.mutate(taskId, { onSuccess });
+    const toastId = showToast("Categorizing task...", "loading");
+    categorize.mutate(taskId, {
+      onSuccess: () => {
+        updateToast(toastId, "Task categorized", "success");
+        onSuccess?.();
+      },
+      onError: (error) => {
+        updateToast(toastId, `Failed: ${error.message}`, "error");
+      },
+    });
   };
 
   const handleFixWorkflow = () => {
-    fixWorkflow.mutate(taskId, { onSuccess });
+    const toastId = showToast("Running AI fix (this may take a while)...", "loading");
+    fixWorkflow.mutate(taskId, {
+      onSuccess: () => {
+        updateToast(toastId, "Workflow fixed", "success");
+        onSuccess?.();
+      },
+      onError: (error) => {
+        updateToast(toastId, `Fix failed: ${error.message}`, "error");
+      },
+    });
   };
 
   const handleCreateTimesheet = (prompt: string) => {
-    createTimesheet.mutate({ taskId, prompt }, { onSuccess });
     setTimesheetModalOpen(false);
+    const toastId = showToast("Creating timesheet...", "loading");
+    createTimesheet.mutate(
+      { taskId, prompt },
+      {
+        onSuccess: () => {
+          updateToast(toastId, "Timesheet created", "success");
+          onSuccess?.();
+        },
+        onError: (error) => {
+          updateToast(toastId, `Failed: ${error.message}`, "error");
+        },
+      }
+    );
   };
 
   const handlePriorityChange = (priority: number) => {
-    setPriority.mutate({ taskId, priority }, { onSuccess });
     setPriorityModalOpen(false);
+    setPriority.mutate({ taskId, priority }, { onSuccess });
   };
 
   const handleTypeChange = (type: string) => {
-    setType.mutate({ taskId, type }, { onSuccess });
     setTypeModalOpen(false);
+    setType.mutate({ taskId, type }, { onSuccess });
   };
 
   const handleWorkflowRun = (restart: boolean) => {
+    setWorkflowModalOpen(false);
+    const toastId = showToast(
+      restart ? "Restarting workflow..." : "Queueing workflow...",
+      "loading"
+    );
     runWorkflow.mutate(
       { taskId, options: { restart } },
-      { onSuccess }
+      {
+        onSuccess: () => {
+          updateToast(
+            toastId,
+            restart ? "Workflow restarted" : "Workflow queued",
+            "success"
+          );
+          onSuccess?.();
+        },
+        onError: (error) => {
+          updateToast(toastId, `Failed: ${error.message}`, "error");
+        },
+      }
     );
-    setWorkflowModalOpen(false);
   };
 
   const handleDelete = () => {
@@ -312,7 +360,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
         onOpenChange={setWorkflowModalOpen}
         taskName={task.name}
         onSubmit={handleWorkflowRun}
-        isPending={runWorkflow.isPending}
       />
 
       <DeleteModal
@@ -328,7 +375,6 @@ export function TaskActionsMenu({ task, onSuccess }: TaskActionsMenuProps) {
         onOpenChange={setTimesheetModalOpen}
         taskName={task.name}
         onSubmit={handleCreateTimesheet}
-        isPending={createTimesheet.isPending}
       />
     </>
   );

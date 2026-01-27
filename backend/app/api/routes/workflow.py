@@ -74,7 +74,10 @@ async def get_workflow_status(task_id: str):
 @router.post("/workflow/run/{task_id}")
 async def run_workflow(task_id: str, options: WorkflowRunOptions = WorkflowRunOptions()):
     """Run workflow for a task."""
-    result = atw_client.workflow_run(task_id, restart=options.restart, now=options.now)
+    # Run in thread pool to avoid blocking the event loop
+    result = await asyncio.to_thread(
+        atw_client.workflow_run, task_id, options.restart, options.now
+    )
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
