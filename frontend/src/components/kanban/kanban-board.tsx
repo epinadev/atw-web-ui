@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { RefreshCw, Loader2, Play } from "lucide-react";
 import { useTasksDashboard, useRunWorkflow } from "@/hooks";
+import { useToast } from "@/components/ui/toast";
 import { WORKFLOW_STATE_ORDER } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { RunTaskModal } from "@/components/task-actions";
@@ -21,14 +22,27 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
   const { data, isLoading, isError, refetch, isFetching } = useTasksDashboard(true);
   const [runTaskModalOpen, setRunTaskModalOpen] = useState(false);
   const runWorkflow = useRunWorkflow();
+  const { showToast, updateToast } = useToast();
 
   const handleRunTask = (taskId: string, restart: boolean) => {
+    // Close modal immediately
+    setRunTaskModalOpen(false);
+
+    // Show loading toast
+    const toastId = showToast(
+      restart ? `Restarting workflow for #${taskId}...` : `Queueing workflow for #${taskId}...`,
+      "loading"
+    );
+
     runWorkflow.mutate(
       { taskId, options: { restart } },
       {
         onSuccess: () => {
-          setRunTaskModalOpen(false);
+          updateToast(toastId, restart ? "Workflow restarted" : "Workflow queued", "success");
           refetch();
+        },
+        onError: (error) => {
+          updateToast(toastId, `Failed: ${error.message}`, "error");
         },
       }
     );
@@ -105,7 +119,6 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
         open={runTaskModalOpen}
         onOpenChange={setRunTaskModalOpen}
         onSubmit={handleRunTask}
-        isPending={runWorkflow.isPending}
       />
 
       {/* Kanban Columns - Stack on mobile, horizontal on desktop */}
