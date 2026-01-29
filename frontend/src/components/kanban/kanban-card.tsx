@@ -5,8 +5,9 @@
 
 "use client";
 
-import { Check } from "lucide-react";
-import { cn, truncate } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { Check, Timer } from "lucide-react";
+import { cn, truncate, formatTimerDisplay } from "@/lib/utils";
 import { STATUS_CONFIG, TYPE_CONFIG, getPriorityConfig } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,24 @@ export function KanbanCard({ task, onSelect }: KanbanCardProps) {
   const priorityConfig = getPriorityConfig(task.priority);
   const progress = task.workflow_progress?.progress_percent ?? 0;
   const hasProgress = task.status === "running" || progress > 0;
+  const isRunning = task.status === "running";
+
+  // Timer state - starts from 0 when task enters running, resets when it exits
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    // Start the timer interval
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   const approveTask = useApproveTask();
   const needsApproval = task.status === "approve";
@@ -102,7 +121,15 @@ export function KanbanCard({ task, onSelect }: KanbanCardProps) {
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-stone-500">Progress</span>
-            <span className="font-medium text-stone-700">{Math.round(progress)}%</span>
+            <div className="flex items-center gap-2">
+              {isRunning && (
+                <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-mono">
+                  <Timer className="h-3 w-3" />
+                  {formatTimerDisplay(elapsedSeconds)}
+                </span>
+              )}
+              <span className="font-medium text-stone-700 dark:text-stone-300">{Math.round(progress)}%</span>
+            </div>
           </div>
           <Progress value={progress} className="h-1.5" />
         </div>
