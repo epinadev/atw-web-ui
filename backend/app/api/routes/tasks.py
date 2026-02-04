@@ -32,6 +32,14 @@ class TypeUpdate(BaseModel):
     type: str
 
 
+class TaskRegisterRequest(BaseModel):
+    project: str
+    name: str
+    task_id: Optional[str] = None
+    task_type: Optional[str] = None
+    description: Optional[str] = None
+
+
 @router.get("")
 async def list_tasks(
     project: Optional[str] = None,
@@ -86,6 +94,24 @@ async def get_blocked():
         raise HTTPException(status_code=500, detail=result.error)
 
     return result.data
+
+
+@router.post("/register")
+async def register_task(body: TaskRegisterRequest):
+    """Register a new task."""
+    result = await asyncio.to_thread(
+        atw_client.task_register,
+        project=body.project,
+        name=body.name,
+        task_id=body.task_id,
+        task_type=body.task_type,
+        description=body.description,
+    )
+
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+
+    return {"success": True, "message": "Task registered", "data": result.data}
 
 
 @router.get("/{task_id}")

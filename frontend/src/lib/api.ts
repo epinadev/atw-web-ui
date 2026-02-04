@@ -147,6 +147,18 @@ export const tasksApi = {
 
   delete: (taskId: string): Promise<any> =>
     request(`/api/tasks/${taskId}`, { method: "DELETE" }),
+
+  register: (params: {
+    project: string;
+    name: string;
+    task_id?: string;
+    task_type?: string;
+    description?: string;
+  }): Promise<any> =>
+    request("/api/tasks/register", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
 };
 
 // ==================== Projects API ====================

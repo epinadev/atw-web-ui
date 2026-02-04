@@ -5,7 +5,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { workflowApi, executorApi, syncApi, logsApi } from "@/lib/api";
+import { workflowApi, executorApi, syncApi, logsApi, tasksApi } from "@/lib/api";
 import type { ExecutorStatus, QueueStatus, WorkflowType } from "@/types";
 
 export function useExecutorStatus() {
@@ -88,6 +88,23 @@ export function useRunWorkflow() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["workflow"] });
+    },
+  });
+}
+
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      project: string;
+      name: string;
+      task_id?: string;
+      task_type?: string;
+      description?: string;
+    }) => tasksApi.register(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

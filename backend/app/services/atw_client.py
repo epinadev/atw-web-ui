@@ -193,6 +193,24 @@ class ATWClient:
         """Run AI categorization on task."""
         return self._run("categorize", task_id, timeout=60)
 
+    def task_register(
+        self,
+        project: str,
+        name: str,
+        task_id: Optional[str] = None,
+        task_type: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> ATWResult:
+        """Register a new task."""
+        args = ["register", "-p", project, "-n", name, "--json"]
+        if task_id:
+            args.extend(["--id", task_id])
+        if task_type:
+            args.extend(["-t", task_type])
+        if description:
+            args.extend(["--description", description])
+        return self._run(*args)
+
     # ==================== Projects ====================
 
     def projects_list(self, domain: Optional[str] = None) -> ATWResult:

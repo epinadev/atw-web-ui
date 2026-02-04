@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { RefreshCw, Loader2, Play } from "lucide-react";
-import { useTasksDashboard, useRunWorkflow } from "@/hooks";
+import { useTasksDashboard, useRunWorkflow, useCreateTask } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { WORKFLOW_STATE_ORDER } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
   const { data, isLoading, isError, refetch, isFetching } = useTasksDashboard(true);
   const [runTaskModalOpen, setRunTaskModalOpen] = useState(false);
   const runWorkflow = useRunWorkflow();
+  const createTask = useCreateTask();
   const { showToast, updateToast } = useToast();
 
   const handleRunTask = (taskId: string, restart: boolean) => {
@@ -47,6 +48,29 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
         },
       }
     );
+  };
+
+  const handleCreateTask = (params: {
+    project: string;
+    name: string;
+    task_id?: string;
+    task_type?: string;
+    description?: string;
+  }) => {
+    setRunTaskModalOpen(false);
+
+    const toastId = showToast(`Creating task "${params.name}"...`, "loading");
+
+    createTask.mutate(params, {
+      onSuccess: () => {
+        updateToast(toastId, "Task created successfully", "success");
+        refetch();
+      },
+      onError: (error: any) => {
+        const msg = error?.message || error?.data?.detail || "Unknown error";
+        updateToast(toastId, `Failed to create task: ${msg}`, "error");
+      },
+    });
   };
 
   if (isLoading) {
@@ -119,7 +143,9 @@ export function KanbanBoard({ onSelectTask }: KanbanBoardProps) {
       <RunTaskModal
         open={runTaskModalOpen}
         onOpenChange={setRunTaskModalOpen}
-        onSubmit={handleRunTask}
+        onRunWorkflow={handleRunTask}
+        onCreateTask={handleCreateTask}
+        isPending={runWorkflow.isPending || createTask.isPending}
       />
 
       {/* Kanban Columns - Stack on mobile, horizontal on desktop */}
