@@ -97,6 +97,10 @@ export function useTerminalSession({
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {
+      // Send stop signal before closing so the backend kills the PTY process
+      if (wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "stop" }));
+      }
       wsRef.current.close();
       wsRef.current = null;
     }

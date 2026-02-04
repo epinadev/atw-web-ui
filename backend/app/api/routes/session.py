@@ -2,6 +2,7 @@
 
 import asyncio
 import fcntl
+import logging
 import os
 import pty
 import select
@@ -13,12 +14,17 @@ from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["session"])
 
 # Configuration for output buffering
 BUFFER_FLUSH_INTERVAL = 0.016  # ~60fps, smooth for TUI rendering
 BUFFER_MAX_SIZE = 16384  # Flush when buffer exceeds this size
 READ_CHUNK_SIZE = 8192  # Larger reads to reduce syscall overhead
+
+# Active session registry for cleanup
+_active_sessions: dict[str, "TerminalSession"] = {}
 
 
 class TerminalSession:
@@ -62,6 +68,9 @@ class TerminalSession:
             # Set non-blocking mode
             flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
             fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            # Register in active sessions
+            _active_sessions[self.task_id] = self
+            logger.info("Session started for task %s (pid=%d)", self.task_id, pid)
             return True
 
     def resize(self, rows: int, cols: int):
@@ -94,7 +103,7 @@ class TerminalSession:
 
         while total_size < BUFFER_MAX_SIZE:
             try:
-                # Check if data is available without blocking
+                # Check if data is available without blocking (timeout=0)
                 readable, _, _ = select.select([self.master_fd], [], [], 0)
                 if not readable:
                     break
@@ -131,7 +140,8 @@ class TerminalSession:
             try:
                 os.kill(self.pid, signal.SIGTERM)
                 # Give process time to terminate gracefully
-                for _ in range(10):
+                for _ in range(20):
+                    time.sleep(0.05)
                     try:
                         pid, _ = os.waitpid(self.pid, os.WNOHANG)
                         if pid == self.pid:
@@ -139,13 +149,15 @@ class TerminalSession:
                     except ChildProcessError:
                         break
                 else:
-                    # Force kill if still running
+                    # Force kill if still running after 1s
                     try:
                         os.kill(self.pid, signal.SIGKILL)
-                    except ProcessLookupError:
+                        os.waitpid(self.pid, 0)
+                    except (ProcessLookupError, ChildProcessError):
                         pass
             except (ProcessLookupError, ChildProcessError):
                 pass
+            logger.info("Session stopped for task %s (pid=%s)", self.task_id, self.pid)
         if self.master_fd:
             try:
                 os.close(self.master_fd)
@@ -153,6 +165,17 @@ class TerminalSession:
                 pass
         self.master_fd = None
         self.pid = None
+        # Remove from active sessions
+        _active_sessions.pop(self.task_id, None)
+
+
+def _blocking_select(fd: int, timeout: float) -> bool:
+    """Blocking select wrapper to run in executor. Returns True if readable."""
+    try:
+        readable, _, _ = select.select([fd], [], [], timeout)
+        return bool(readable)
+    except (ValueError, OSError):
+        return False
 
 
 @router.websocket("/ws/session/{task_id}")
@@ -170,6 +193,12 @@ async def terminal_session(websocket: WebSocket, task_id: str):
     """
     await websocket.accept()
 
+    # Kill any existing session for this task
+    existing = _active_sessions.get(task_id)
+    if existing:
+        logger.info("Killing existing session for task %s", task_id)
+        existing.stop()
+
     session = TerminalSession(task_id)
 
     try:
@@ -184,6 +213,7 @@ async def terminal_session(websocket: WebSocket, task_id: str):
 
         async def read_output():
             """Read output from PTY and send to WebSocket with buffering."""
+            loop = asyncio.get_event_loop()
             output_buffer = []
             last_flush_time = time.monotonic()
 
@@ -192,11 +222,15 @@ async def terminal_session(websocket: WebSocket, task_id: str):
                     break
 
                 try:
-                    # Wait for data with a short timeout
-                    readable, _, _ = select.select([session.master_fd], [], [], BUFFER_FLUSH_INTERVAL)
+                    # Use run_in_executor to avoid blocking the event loop.
+                    # This allows handle_input() to process resize/input messages
+                    # while we wait for PTY data.
+                    has_data = await loop.run_in_executor(
+                        None, _blocking_select, session.master_fd, BUFFER_FLUSH_INTERVAL
+                    )
 
-                    if readable:
-                        # Read all available data at once
+                    if has_data:
+                        # read_all_available uses select with timeout=0 (non-blocking)
                         data = session.read_all_available()
                         if data:
                             output_buffer.append(data)
@@ -226,7 +260,7 @@ async def terminal_session(websocket: WebSocket, task_id: str):
                 except (ValueError, OSError):
                     break
 
-                # Check if process is still alive
+                # Check if process exited on its own
                 if not session.is_alive():
                     # Flush any remaining buffered output
                     if output_buffer:
@@ -236,7 +270,23 @@ async def terminal_session(websocket: WebSocket, task_id: str):
                             "data": combined_data.decode("utf-8", errors="replace"),
                         })
                     await websocket.send_json({"type": "exit", "code": 0})
-                    break
+                    return
+
+            # Loop exited because session.running was set to False (stop requested
+            # or WebSocket disconnect). Flush remaining output and notify client.
+            if output_buffer:
+                try:
+                    combined_data = b"".join(output_buffer)
+                    await websocket.send_json({
+                        "type": "output",
+                        "data": combined_data.decode("utf-8", errors="replace"),
+                    })
+                except Exception:
+                    pass
+            try:
+                await websocket.send_json({"type": "exit", "code": 0})
+            except Exception:
+                pass
 
         async def handle_input():
             """Handle input from WebSocket."""
@@ -258,7 +308,9 @@ async def terminal_session(websocket: WebSocket, task_id: str):
                         session.resize(rows, cols)
 
                     elif msg_type == "stop":
-                        session.stop()
+                        # Signal read_output to exit; actual process cleanup
+                        # happens in the finally block of terminal_session.
+                        session.running = False
                         break
 
                 except asyncio.TimeoutError:
@@ -266,7 +318,6 @@ async def terminal_session(websocket: WebSocket, task_id: str):
                 except WebSocketDisconnect:
                     break
                 except Exception:
-                    # Handle other exceptions gracefully
                     break
 
         # Run both tasks concurrently
@@ -285,3 +336,35 @@ async def terminal_session(websocket: WebSocket, task_id: str):
             await websocket.close()
         except Exception:
             pass
+
+
+@router.get("/api/sessions")
+async def list_sessions():
+    """List active terminal sessions."""
+    sessions = []
+    for task_id, sess in list(_active_sessions.items()):
+        alive = sess.is_alive()
+        sessions.append({
+            "task_id": task_id,
+            "pid": sess.pid,
+            "alive": alive,
+        })
+    return {"sessions": sessions}
+
+
+@router.delete("/api/sessions/{task_id}")
+async def kill_session(task_id: str):
+    """Kill a specific terminal session."""
+    sess = _active_sessions.get(task_id)
+    if not sess:
+        return {"status": "not_found"}
+    sess.stop()
+    return {"status": "killed", "task_id": task_id}
+
+
+async def cleanup_all_sessions():
+    """Stop all active sessions. Called on app shutdown."""
+    for task_id, sess in list(_active_sessions.items()):
+        logger.info("Cleaning up session for task %s", task_id)
+        sess.stop()
+    _active_sessions.clear()
