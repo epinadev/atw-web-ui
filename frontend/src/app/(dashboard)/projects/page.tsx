@@ -8,6 +8,7 @@ import { useState, useMemo } from "react";
 import { RefreshCw, Loader2, Search } from "lucide-react";
 import { useProjects } from "@/hooks";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose } from "@/components/ui/dialog";
 import { ProjectCard, ProjectDetail } from "@/components/projects";
 import type { Project } from "@/types";
 
@@ -136,8 +137,8 @@ export default function ProjectsPage() {
           )}
         </div>
 
-        {/* Detail Panel */}
-        <div className="lg:col-span-1">
+        {/* Detail Panel - desktop only */}
+        <div className="hidden lg:block lg:col-span-1">
           {selectedProject ? (
             <div className="sticky top-20">
               <ProjectDetail project={selectedProject} />
@@ -148,6 +149,14 @@ export default function ProjectsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Detail Dialog - mobile only */}
+      <div className="lg:hidden">
+        <Dialog open={selectedProject !== null} onOpenChange={(open) => { if (!open) setSelectedProject(null); }}>
+          <DialogClose onClose={() => setSelectedProject(null)} />
+          {selectedProject && <ProjectDetail project={selectedProject} />}
+        </Dialog>
       </div>
     </div>
   );
