@@ -9,6 +9,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 from app.services.atw_client import atw_client
+from app.services.notifications import notify
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -133,6 +134,7 @@ async def approve_task(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="ready", detail="Task approved")
     return {"success": True, "message": f"Task {task_id} approved"}
 
 
@@ -144,6 +146,7 @@ async def reset_task(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="redo", detail="Task reset")
     return {"success": True, "message": f"Task {task_id} reset to REDO"}
 
 
@@ -155,6 +158,7 @@ async def finish_task(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="conclude", detail="Task set to conclude")
     return {"success": True, "message": f"Task {task_id} set to CONCLUDE"}
 
 
@@ -166,6 +170,7 @@ async def workflow_approve(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, detail="Workflow approved")
     return {"success": True, "message": f"Task {task_id} workflow approved"}
 
 
@@ -177,6 +182,7 @@ async def mark_done(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="done", detail="Task completed")
     return {"success": True, "message": f"Task {task_id} marked as done"}
 
 
@@ -211,6 +217,7 @@ async def categorize_task(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("async_task_complete", task_id=task_id, detail="Task categorized")
     return {"success": True, "message": f"Task {task_id} categorized", "output": result.raw_output}
 
 

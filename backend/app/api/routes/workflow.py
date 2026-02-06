@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from app.services.atw_client import atw_client
+from app.services.notifications import notify
 
 router = APIRouter(tags=["workflow"])
 
@@ -82,6 +83,7 @@ async def run_workflow(task_id: str, options: WorkflowRunOptions = WorkflowRunOp
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="queued", detail="Workflow started")
     return {"success": True, "message": f"Workflow started for {task_id}"}
 
 
@@ -93,6 +95,7 @@ async def stop_workflow(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="planning", detail="Workflow stopped")
     return {"success": True, "message": f"Workflow stopped for {task_id}"}
 
 
@@ -104,6 +107,7 @@ async def workflow_done(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="done", detail="Task marked done")
     return {"success": True, "message": f"Task {task_id} marked as done"}
 
 
@@ -115,6 +119,7 @@ async def workflow_pass(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="conclude", detail="Testing passed")
     return {"success": True, "message": f"Task {task_id} testing passed"}
 
 
@@ -126,6 +131,7 @@ async def workflow_fail(task_id: str, body: FailReason = FailReason()):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", task_id=task_id, new_status="redo", detail="Testing failed")
     return {"success": True, "message": f"Task {task_id} testing failed"}
 
 
@@ -138,6 +144,7 @@ async def workflow_fix(task_id: str):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("async_task_complete", task_id=task_id, detail="AI fix completed")
     return {"success": True, "message": f"Task {task_id} fixed", "output": result.raw_output}
 
 
@@ -152,6 +159,8 @@ async def workflow_timesheet(task_id: str, body: TimesheetRequest):
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    if not body.dry_run:
+        await notify("async_task_complete", task_id=task_id, detail="Timesheet created")
     return {
         "success": True,
         "message": f"Timesheet created for task {task_id}" if not body.dry_run else "Dry run completed",
@@ -216,6 +225,7 @@ async def run_all_tasks():
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
 
+    await notify("workflow_state_change", new_status="queued", detail="All tasks queued")
     return {"success": True, "message": "All tasks queued", "output": result.raw_output}
 
 

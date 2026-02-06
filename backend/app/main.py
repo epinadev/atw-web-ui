@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api.routes import tasks, projects, workflow, sync, health, session
+from app.api.routes import tasks, projects, workflow, sync, health, session, notifications
 from app.api.routes.session import cleanup_all_sessions
 
 app = FastAPI(
@@ -29,6 +29,7 @@ app.include_router(projects.router, prefix="/api")
 app.include_router(workflow.router, prefix="/api")
 app.include_router(sync.router, prefix="/api")
 app.include_router(session.router)
+app.include_router(notifications.router)
 
 
 @app.on_event("shutdown")

@@ -5,12 +5,14 @@
 "use client";
 
 import { useTasksSummary, useExecutorStatus } from "@/hooks";
-import { RefreshCw, Settings, ChevronDown } from "lucide-react";
+import { RefreshCw, Settings, ChevronDown, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNotificationContext } from "@/components/notification-provider";
 
 export function Header() {
   const { data: summary } = useTasksSummary();
   const { data: executor } = useExecutorStatus();
+  const { status: wsStatus, browserPermission, requestPermission } = useNotificationContext();
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 sm:px-6 lg:px-8">
@@ -85,6 +87,42 @@ export function Header() {
           </>
         )}
       </div>
+
+      {/* Notification Bell */}
+      {browserPermission === "default" ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8"
+          onClick={requestPermission}
+          title="Enable notifications"
+        >
+          <BellOff className="h-4 w-4 text-stone-400" />
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500" />
+        </Button>
+      ) : browserPermission === "granted" ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8"
+          title={wsStatus === "connected" ? "Notifications active" : "Notifications disconnected"}
+        >
+          <Bell
+            className={`h-4 w-4 ${
+              wsStatus === "connected"
+                ? "text-green-500"
+                : "text-stone-400"
+            }`}
+          />
+          {wsStatus === "connected" && (
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-green-500" />
+          )}
+        </Button>
+      ) : (
+        <Button variant="ghost" size="icon" className="h-8 w-8" title="Notifications blocked">
+          <Bell className="h-4 w-4 text-stone-400" />
+        </Button>
+      )}
 
       {/* Refresh Button */}
       <Button variant="ghost" size="icon" className="h-8 w-8">
