@@ -62,7 +62,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
         onClick={onClose}
       />
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-stone-900 shadow-2xl border-l border-stone-200 dark:border-stone-700 z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-[90vw] bg-white dark:bg-stone-900 shadow-2xl border-l border-stone-200 dark:border-stone-700 z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
         <div className="flex items-center gap-3">

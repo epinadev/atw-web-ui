@@ -4,7 +4,7 @@ import asyncio
 import os
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from typing import Optional, List
 from pydantic import BaseModel
 
@@ -364,3 +364,57 @@ async def read_task_file(task_id: str, path: str):
         "size": file_size,
         "content": content,
     }
+
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico"}
+MIME_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+    ".ico": "image/x-icon",
+}
+
+
+@router.get("/{task_id}/files/raw")
+async def read_task_file_raw(task_id: str, path: str):
+    """
+    Serve a raw file from task's resources folder (for images and binary files).
+
+    Args:
+        task_id: The task identifier
+        path: Relative path to the file within resources folder
+
+    Returns:
+        Raw file with appropriate content-type
+    """
+    if not path:
+        raise HTTPException(status_code=400, detail="Path parameter is required")
+
+    resources_path = _get_task_resources_path(task_id)
+
+    # Security: Normalize and check for path traversal
+    normalized = os.path.normpath(path)
+    if normalized.startswith('..') or os.path.isabs(normalized):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    full_path = os.path.join(resources_path, normalized)
+
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not os.path.isfile(full_path):
+        raise HTTPException(status_code=400, detail="Path is not a file")
+
+    # Check file size (limit to 10MB for images)
+    file_size = os.path.getsize(full_path)
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+
+    ext = Path(full_path).suffix.lower()
+    media_type = MIME_TYPES.get(ext, "application/octet-stream")
+
+    return FileResponse(full_path, media_type=media_type)

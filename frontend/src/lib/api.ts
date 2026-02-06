@@ -118,6 +118,11 @@ export const tasksApi = {
   readFile: (taskId: string, path: string): Promise<any> =>
     request(`/api/tasks/${taskId}/files/read`, { params: { path } }),
 
+  rawFileUrl: (taskId: string, path: string): string => {
+    const params = new URLSearchParams({ path });
+    return `${getApiBaseUrl()}/api/tasks/${taskId}/files/raw?${params}`;
+  },
+
   approve: (taskId: string): Promise<any> =>
     request(`/api/tasks/${taskId}/approve`, { method: "POST" }),
 

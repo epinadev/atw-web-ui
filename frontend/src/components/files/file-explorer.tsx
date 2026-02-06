@@ -11,6 +11,7 @@ import {
   File,
   FileText,
   FileJson,
+  FileImage,
   ChevronRight,
   ChevronLeft,
   Loader2,
@@ -28,9 +29,19 @@ interface FileExplorerProps {
   onClose?: () => void;
 }
 
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico"]);
+
+function isImageFile(extension: string): boolean {
+  return IMAGE_EXTENSIONS.has(extension.toLowerCase());
+}
+
 function getFileIcon(file: FileInfo) {
   if (file.type === "directory") {
     return <Folder className="h-5 w-5 text-amber-500" />;
+  }
+
+  if (isImageFile(file.extension)) {
+    return <FileImage className="h-5 w-5 text-purple-500" />;
   }
 
   switch (file.extension) {
@@ -73,7 +84,9 @@ export function FileExplorer({ taskId, initialFile, onClose }: FileExplorerProps
     queryFn: () => tasksApi.listFiles(taskId, currentPath || undefined),
   });
 
-  // Fetch file content when a file is selected
+  const selectedIsImage = selectedFile ? isImageFile(selectedFile.split(".").pop() ? `.${selectedFile.split(".").pop()}` : "") : false;
+
+  // Fetch file content when a non-image file is selected
   const {
     data: fileContent,
     isLoading: contentLoading,
@@ -81,7 +94,7 @@ export function FileExplorer({ taskId, initialFile, onClose }: FileExplorerProps
   } = useQuery({
     queryKey: ["task-file-content", taskId, selectedFile],
     queryFn: () => tasksApi.readFile(taskId, selectedFile!),
-    enabled: !!selectedFile,
+    enabled: !!selectedFile && !selectedIsImage,
   });
 
   const handleFileClick = (file: FileInfo) => {
@@ -104,6 +117,41 @@ export function FileExplorer({ taskId, initialFile, onClose }: FileExplorerProps
   };
 
   const pathParts = currentPath ? currentPath.split("/") : [];
+
+  // Render image viewer
+  if (selectedFile && selectedIsImage) {
+    const fileName = selectedFile.split("/").pop() || selectedFile;
+    const imageUrl = tasksApi.rawFileUrl(taskId, selectedFile);
+
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleBack}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-medium text-stone-900 dark:text-stone-100">{fileName}</span>
+          </div>
+          {onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Image */}
+        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-stone-100 dark:bg-stone-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={fileName}
+            className="max-w-full max-h-full object-contain rounded"
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Render file content viewer
   if (selectedFile && fileContent) {
